@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block title %}Зайнятість {{ resource.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="section-title">Зайнятість ресурсу</h1>
+    <p class="text-muted mb-1"><strong>Ресурс:</strong> {{ resource.name }}</p>
+    <p class="text-muted"><strong>Дата:</strong> {{ selected_date }}</p>
+</div>
+
+<div class="d-flex gap-2 flex-wrap mb-4">
+    <a href="?date={{ prev_date|date:'Y-m-d' }}" class="btn btn-outline-secondary">← Попередній день</a>
+    <a href="?date={{ next_date|date:'Y-m-d' }}" class="btn btn-outline-secondary">Наступний день →</a>
+    <a href="{% url 'resource_detail' resource.id %}" class="btn btn-outline-dark">Назад до ресурсу</a>
+</div>
+
+<div id="booking-message"></div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0 schedule-table">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 110px;">№ пари</th>
+                        <th style="width: 170px;">Час</th>
+                        <th style="width: 220px;">Статус</th>
+                        <th>Інформація</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in pair_slots %}
+                        <tr id="slot-row-{{ slot.number }}">
+                            <td><strong>{{ slot.number }} пара</strong></td>
+                            <td>{{ slot.start|date:"H:i" }} – {{ slot.end|date:"H:i" }}</td>
+
+                            {% if slot.is_free %}
+                                <td class="slot-status">
+                                    <span class="badge rounded-pill text-bg-success px-3 py-2">Вільно</span>
+                                </td>
+                                <td class="slot-info">
+                                    {% if user.is_authenticated %}
+                                        {% if user.is_superuser or user.is_staff or user.profile.role == 'teacher' %}
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline-success open-booking-modal-btn"
+                                                data-resource-id="{{ resource.id }}"
+                                                data-resource-name="{{ resource.name }}"
+                                                data-pair-number="{{ slot.number }}"
+                                                data-date="{{ selected_date|date:'Y-m-d' }}"
+                                                data-date-display="{{ selected_date|date:'d.m.Y' }}"
+                                                data-start-time="{{ slot.start|date:'H:i' }}"
+                                                data-end-time="{{ slot.end|date:'H:i' }}"
+                                            >
+                                                Забронювати
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">Пара доступна</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{% url 'login' %}" class="btn btn-sm btn-outline-dark">Увійти</a>
+                                    {% endif %}
+                                </td>
+                            {% else %}
+                                <td class="slot-status">
+                                    {% if slot.booking.status == 'approved' %}
+                                        <span class="badge rounded-pill text-bg-danger px-3 py-2">Зайнято</span>
+                                    {% elif slot.booking.status == 'pending' %}
+                                        <span class="badge rounded-pill text-bg-warning px-3 py-2">Очікує підтвердження</span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="slot-info">
+                                    <div><strong>Користувач:</strong> {{ slot.booking.user.username }}</div>
+                                    <div><strong>Бронювання:</strong> {{ slot.booking.start_time|date:"H:i" }} – {{ slot.booking.end_time|date:"H:i" }}</div>
+
+                                    {% if slot.alternatives %}
+                                        <div class="mt-2">
+                                            <small class="text-muted">Вільні ресурси:</small><br>
+                                            {% for alt in slot.alternatives %}
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-primary mt-1 open-booking-modal-btn"
+                                                    data-resource-id="{{ alt.id }}"
+                                                    data-resource-name="{{ alt.name }}"
+                                                    data-pair-number="{{ slot.number }}"
+                                                    data-date="{{ selected_date|date:'Y-m-d' }}"
+                                                    data-date-display="{{ selected_date|date:'d.m.Y' }}"
+                                                    data-start-time="{{ slot.start|date:'H:i' }}"
+                                                    data-end-time="{{ slot.end|date:'H:i' }}"
+                                                >
+                                                    {{ alt.name }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="text-muted mt-2">Немає вільних альтернатив</div>
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="quickBookingModal" tabindex="-1" aria-labelledby="quickBookingModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="quickBookingModalLabel">Підтвердження швидкого бронювання</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Ресурс:</strong> <span id="modal-resource-name">—</span></p>
+                <p><strong>Дата:</strong> <span id="modal-date-display">—</span></p>
+                <p><strong>Пара:</strong> <span id="modal-pair-number">—</span></p>
+                <p><strong>Час:</strong> <span id="modal-time-range">—</span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-dark" id="confirmQuickBookingBtn">Підтвердити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const messageBox = document.getElementById('booking-message');
+    const quickBookingModalElement = document.getElementById('quickBookingModal');
+    const quickBookingModal = new bootstrap.Modal(quickBookingModalElement);
+
+    const modalResourceName = document.getElementById('modal-resource-name');
+    const modalDateDisplay = document.getElementById('modal-date-display');
+    const modalPairNumber = document.getElementById('modal-pair-number');
+    const modalTimeRange = document.getElementById('modal-time-range');
+    const confirmQuickBookingBtn = document.getElementById('confirmQuickBookingBtn');
+
+    let currentBookingData = null;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    function attachOpenModalHandlers() {
+        const buttons = document.querySelectorAll('.open-booking-modal-btn');
+
+        buttons.forEach(function(button) {
+            button.onclick = function () {
+                currentBookingData = {
+                    resourceId: this.dataset.resourceId,
+                    resourceName: this.dataset.resourceName,
+                    pairNumber: this.dataset.pairNumber,
+                    date: this.dataset.date,
+                    dateDisplay: this.dataset.dateDisplay,
+                    startTime: this.dataset.startTime,
+                    endTime: this.dataset.endTime
+                };
+
+                modalResourceName.textContent = currentBookingData.resourceName;
+                modalDateDisplay.textContent = currentBookingData.dateDisplay;
+                modalPairNumber.textContent = currentBookingData.pairNumber;
+                modalTimeRange.textContent = `${currentBookingData.startTime} – ${currentBookingData.endTime}`;
+
+                quickBookingModal.show();
+            };
+        });
+    }
+
+    confirmQuickBookingBtn.addEventListener('click', function () {
+        if (!currentBookingData) return;
+
+        const row = document.getElementById(`slot-row-${currentBookingData.pairNumber}`);
+
+        fetch(`/resources/${currentBookingData.resourceId}/quick-book/${currentBookingData.pairNumber}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                date: currentBookingData.date
+            })
+        })
+        .then(async response => {
+            const data = await response.json();
+            return { ok: response.ok, data: data };
+        })
+        .then(({ ok, data }) => {
+            quickBookingModal.hide();
+
+            if (ok && data.success) {
+                messageBox.innerHTML = `
+                    <div class="alert alert-success mb-4">
+                        ${data.message}
+                    </div>
+                `;
+
+                const statusCell = row.querySelector('.slot-status');
+                const infoCell = row.querySelector('.slot-info');
+
+                if (data.booking.status === 'approved') {
+                    statusCell.innerHTML = `
+                        <span class="badge rounded-pill text-bg-danger px-3 py-2">Зайнято</span>
+                    `;
+                } else {
+                    statusCell.innerHTML = `
+                        <span class="badge rounded-pill text-bg-warning px-3 py-2">Очікує підтвердження</span>
+                    `;
+                }
+
+                infoCell.innerHTML = `
+                    <div><strong>Користувач:</strong> ${data.booking.username}</div>
+                    <div><strong>Бронювання:</strong> ${data.booking.start_time} – ${data.booking.end_time}</div>
+                    <div class="text-muted mt-2">Немає вільних альтернатив</div>
+                `;
+            } else {
+                let alternativesHtml = '';
+
+                if (data.alternatives && data.alternatives.length > 0) {
+                    alternativesHtml += `
+                        <div class="mt-3">
+                            <small class="text-muted">Спробуйте інший вільний ресурс:</small><br>
+                    `;
+
+                    data.alternatives.forEach(function(alt) {
+                        alternativesHtml += `
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-outline-primary mt-1 open-booking-modal-btn"
+                                data-resource-id="${alt.id}"
+                                data-resource-name="${alt.name}"
+                                data-pair-number="${currentBookingData.pairNumber}"
+                                data-date="${currentBookingData.date}"
+                                data-date-display="${currentBookingData.dateDisplay}"
+                                data-start-time="${currentBookingData.startTime}"
+                                data-end-time="${currentBookingData.endTime}"
+                            >
+                                ${alt.name}
+                            </button>
+                        `;
+                    });
+
+                    alternativesHtml += `</div>`;
+                }
+
+                messageBox.innerHTML = `
+                    <div class="alert alert-danger mb-4">
+                        ${data.message}
+                        ${alternativesHtml}
+                    </div>
+                `;
+
+                attachOpenModalHandlers();
+            }
+        })
+        .catch(error => {
+            quickBookingModal.hide();
+
+            messageBox.innerHTML = `
+                <div class="alert alert-danger mb-4">
+                    Сталася помилка під час бронювання.
+                </div>
+            `;
+            console.error(error);
+        });
+    });
+
+    attachOpenModalHandlers();
+});
+</script>
+{% endblock %}

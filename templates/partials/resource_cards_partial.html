@@ -1,0 +1,62 @@
+<div class="row g-4 resource-cards-row fade-in-block">
+    {% for resource in resources %}
+        <div class="col-lg-4 col-md-6">
+            <div class="resource-card-clean">
+                <div>
+                    {% if resource.is_recommended %}
+                        <div class="mb-2">
+                            <span class="badge bg-primary">Рекомендовано для вас</span>
+                        </div>
+                    {% endif %}
+
+                    <h3 class="resource-card-clean-title">{{ resource.name }}</h3>
+                    <div class="resource-card-clean-type">
+                        {{ resource.get_resource_type_display }}
+                    </div>
+
+                    <div class="resource-card-clean-info">
+                        {% if resource.department %}
+                            <p>
+                                <strong>Кафедра:</strong>
+                                {{ resource.get_department_display }}
+                            </p>
+                        {% endif %}
+
+                        <p>
+                            <strong>Місцезнаходження:</strong>
+                            {{ resource.location }}
+                        </p>
+
+                        <p>
+                            <strong>Місткість:</strong>
+                            {{ resource.capacity }}
+                        </p>
+
+                        {% if resource.description %}
+                            <p>
+                                <strong>Опис:</strong>
+                                {{ resource.description }}
+                            </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="resource-card-clean-actions">
+                    <a href="{% url 'resource_detail' resource.id %}" class="resource-outline-btn">
+                        Детальніше
+                    </a>
+
+                    <a href="{% url 'resource_schedule' resource.id %}" class="resource-outline-btn">
+                        Зайнятість
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="empty-state">
+                Ресурсів за заданими параметрами не знайдено.
+            </div>
+        </div>
+    {% endfor %}
+</div>

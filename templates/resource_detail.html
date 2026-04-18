@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ resource.name }}{% endblock %}
+
+{% block content %}
+<div class="detail-shell">
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-7">
+            <div class="detail-hero-card h-100">
+                <div class="detail-badge">
+                    {{ resource.get_resource_type_display }}
+                </div>
+
+                <h1 class="detail-title">{{ resource.name }}</h1>
+
+                <p class="detail-subtitle">
+                    Детальна інформація про ресурс, його характеристики, доступність та інструменти керування.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="detail-action-card detail-action-card-top h-100">
+                <h2 class="detail-card-title">Дії</h2>
+                <p class="text-muted mb-4">
+                    Доступні дії залежать від ролі користувача в системі.
+                </p>
+
+                <div class="d-grid gap-3">
+                    {% if user.is_authenticated %}
+                        {% if user.is_superuser or user.is_staff or user.profile.role == 'teacher' %}
+                            <a href="{% url 'create_booking' resource.id %}" class="btn app-btn app-btn-primary">
+                                Забронювати
+                            </a>
+                        {% else %}
+                            <button type="button" class="btn app-btn app-btn-secondary" disabled>
+                                Тільки перегляд для студентів
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn app-btn app-btn-primary">
+                            Увійти для бронювання
+                        </a>
+                    {% endif %}
+
+                    <a href="{% url 'resource_schedule' resource.id %}" class="btn app-btn app-btn-outline-dark">
+                        Денна зайнятість
+                    </a>
+
+                    <a href="{% url 'resource_week_schedule' resource.id %}" class="btn app-btn app-btn-outline-dark">
+                        Тижневий календар
+                    </a>
+
+                    <a href="{% url 'resource_list' %}" class="btn app-btn app-btn-secondary">
+                        Назад до списку
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detail-info-card">
+        <h2 class="detail-card-title">Основна інформація</h2>
+
+        <div class="detail-grid">
+            <div class="detail-item">
+                <span class="detail-label">Тип ресурсу</span>
+                <span class="detail-value">{{ resource.get_resource_type_display }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Місткість</span>
+                <span class="detail-value">{{ resource.capacity }}</span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Кафедра</span>
+                <span class="detail-value">
+                    {% if resource.department %}
+                        {{ resource.get_department_display }}
+                    {% else %}
+                        Не вказано
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="detail-item">
+                <span class="detail-label">Місцезнаходження</span>
+                <span class="detail-value">{{ resource.location }}</span>
+            </div>
+
+            <div class="detail-item detail-item-full">
+                <span class="detail-label">Опис</span>
+                <span class="detail-value">
+                    {% if resource.description %}
+                        {{ resource.description }}
+                    {% else %}
+                        Опис відсутній.
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

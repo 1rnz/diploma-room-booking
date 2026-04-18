@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Ресурси{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <div class="page-eyebrow">Каталог ресурсів</div>
+        <h1 class="section-title mb-2">Доступні ресурси</h1>
+        <p class="text-muted mb-2">
+            Перегляд, пошук і фільтрація аудиторій, лабораторій, обладнання та інших ресурсів.
+        </p>
+    </div>
+</div>
+
+<div class="filter-panel mb-4">
+    <form id="resource-filter-form" method="get">
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-4 col-md-6">
+                <label class="form-label fw-semibold">Пошук</label>
+                <input
+                    type="text"
+                    id="filter-q"
+                    name="q"
+                    class="form-control"
+                    placeholder="Введіть назву або місцезнаходження"
+                    value="{{ search_query }}"
+                >
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label fw-semibold">Тип ресурсу</label>
+                <select id="filter-type" name="type" class="form-select">
+                    <option value="">Усі типи</option>
+                    {% for value, label in resource_type_choices %}
+                        <option value="{{ value }}" {% if selected_type == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label fw-semibold">Кафедра</label>
+                <select id="filter-department" name="department" class="form-select">
+                    <option value="">Усі кафедри</option>
+                    {% for value, label in department_choices %}
+                        <option value="{{ value }}" {% if selected_department == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label fw-semibold">Мін. місткість</label>
+                <input
+                    type="number"
+                    id="filter-capacity"
+                    name="min_capacity"
+                    class="form-control"
+                    min="1"
+                    placeholder="Напр. 20"
+                    value="{{ selected_min_capacity }}"
+                >
+            </div>
+
+            <div class="col-lg-1 col-md-12">
+                <label class="form-label fw-semibold d-none d-lg-block">&nbsp;</label>
+                <a href="{% url 'resource_list' %}"
+                   id="reset-filters-btn"
+                   class="btn app-btn app-btn-secondary w-100">
+                    Скинути
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div id="resource-results">
+    {% include 'partials/resource_cards_partial.html' %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('resource-filter-form');
+    const resultsContainer = document.getElementById('resource-results');
+
+    const searchInput = document.getElementById('filter-q');
+    const typeSelect = document.getElementById('filter-type');
+    const departmentSelect = document.getElementById('filter-department');
+    const capacityInput = document.getElementById('filter-capacity');
+    const resetBtn = document.getElementById('reset-filters-btn');
+
+    let debounceTimer = null;
+
+    function buildQueryString() {
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+
+        for (const [key, value] of formData.entries()) {
+            if (value.trim() !== '') {
+                params.append(key, value);
+            }
+        }
+
+        return params.toString();
+    }
+
+    function fetchResources() {
+        const queryString = buildQueryString();
+        const url = queryString
+            ? `{% url 'resource_list' %}?${queryString}`
+            : `{% url 'resource_list' %}`;
+
+        resultsContainer.classList.add('results-loading');
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            resultsContainer.innerHTML = html;
+            resultsContainer.classList.remove('results-loading');
+
+            const newUrl = queryString
+                ? `{% url 'resource_list' %}?${queryString}`
+                : `{% url 'resource_list' %}`;
+
+            window.history.replaceState({}, '', newUrl);
+        })
+        .catch(() => {
+            resultsContainer.classList.remove('results-loading');
+        });
+    }
+
+    function debouncedFetch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(fetchResources, 300);
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        fetchResources();
+    });
+
+    searchInput.addEventListener('input', debouncedFetch);
+    typeSelect.addEventListener('change', fetchResources);
+    departmentSelect.addEventListener('change', fetchResources);
+    capacityInput.addEventListener('input', debouncedFetch);
+
+    resetBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        searchInput.value = '';
+        typeSelect.value = '';
+        departmentSelect.value = '';
+        capacityInput.value = '';
+
+        fetchResources();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Реєстрація{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+    <div class="auth-card auth-card-wide">
+        <div class="auth-card-side">
+            <div class="auth-mini-badge">Реєстрація</div>
+            <h1 class="auth-title">Створення акаунта</h1>
+            <p class="auth-text">
+                Реєстрація доступна лише для користувачів з академічною поштою навчального закладу.
+                Після створення акаунта адміністратор зможе активувати доступ.
+            </p>
+
+            <div class="auth-hint-box">
+                Дозволені домени:
+                <strong>@stud.duikt.edu.ua</strong>,
+                <strong>@duikt.edu.ua</strong>
+            </div>
+        </div>
+
+        <div class="auth-card-form">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Ім’я користувача</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                        <div class="text-danger small mt-1">{{ form.email.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Пароль</label>
+                    {{ form.password1 }}
+                    {% if form.password1.errors %}
+                        <div class="text-danger small mt-1">{{ form.password1.errors }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Підтвердження пароля</label>
+                    {{ form.password2 }}
+                    {% if form.password2.errors %}
+                        <div class="text-danger small mt-1">{{ form.password2.errors }}</div>
+                    {% endif %}
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="custom-alert custom-alert-danger mb-3">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <div class="d-grid">
+                    <button type="submit" class="btn app-btn app-btn-primary btn-lg">
+                        Зареєструватися
+                    </button>
+                </div>
+
+                <div class="auth-bottom-text">
+                    Уже маєте акаунт?
+                    <a href="{% url 'login' %}">Увійти</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

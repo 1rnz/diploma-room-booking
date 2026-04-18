@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Мої бронювання{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <div class="page-eyebrow">Особистий кабінет</div>
+        <h1 class="section-title mb-2">Мої бронювання</h1>
+        <p class="text-muted mb-0">
+            Тут відображаються всі ваші бронювання ресурсів.
+        </p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table booking-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Ресурс</th>
+                        <th>Пари</th>
+                        <th>Початок</th>
+                        <th>Кінець</th>
+                        <th>Статус</th>
+                        <th class="booking-actions-head">
+                            <div class="booking-actions-head-inner">
+                                <span>Дії</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-outline-danger booking-delete-cancelled-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteInactiveModal"
+                                >
+                                    Очистити завершені та скасовані
+                                </button>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                        <tr>
+                            <td>{{ booking.resource.name }}</td>
+                            <td>{{ booking.get_pair_label }}</td>
+                            <td>{{ booking.start_time|date:"d.m.Y H:i" }}</td>
+                            <td>{{ booking.end_time|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                {% if booking.display_status == 'approved' %}
+                                    <span class="badge bg-success">Підтверджено</span>
+                                {% elif booking.display_status == 'pending' %}
+                                    <span class="badge bg-warning text-dark">Очікує підтвердження</span>
+                                {% elif booking.display_status == 'cancelled' %}
+                                    <span class="badge bg-secondary">Скасовано</span>
+                                {% elif booking.display_status == 'rejected' %}
+                                    <span class="badge bg-danger">Відхилено</span>
+                                {% elif booking.display_status == 'completed' %}
+                                    <span class="badge bg-dark">Завершено</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ booking.display_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-2 booking-actions-cell">
+                                    {% if booking.display_status == 'approved' or booking.display_status == 'pending' %}
+                                        <a href="{% url 'cancel_booking' booking.id %}"
+                                           class="btn btn-sm app-btn app-btn-warning confirm-action"
+                                           data-confirm-message="Справді скасувати це бронювання?">
+                                            Скасувати
+                                        </a>
+                                    {% endif %}
+
+                                    <a href="{% url 'delete_booking' booking.id %}"
+                                       class="btn btn-sm app-btn app-btn-danger confirm-action"
+                                       data-confirm-message="Справді видалити це бронювання безповоротно?">
+                                        Видалити
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                У вас поки немає бронювань.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteInactiveModal" tabindex="-1" aria-labelledby="deleteInactiveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="deleteInactiveModalLabel">Підтвердження очищення</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Ви дійсно хочете видалити всі завершені та скасовані бронювання?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <a href="{% url 'delete_inactive_bookings' %}" class="btn btn-danger">Так, очистити</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

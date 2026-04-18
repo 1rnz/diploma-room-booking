@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Головна{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="hero-content">
+        <div class="hero-badge">Система бронювання ресурсів навчального закладу</div>
+
+        <h1 class="hero-title">
+            Керуйте аудиторіями, лабораторіями та ресурсами
+            <span class="hero-title-accent">зручно і швидко</span>
+        </h1>
+
+        <p class="hero-subtitle">
+            Вебзастосунок для перегляду доступності ресурсів, створення бронювань,
+            адміністрування заявок та контролю використання навчальної інфраструктури.
+        </p>
+
+        <div class="hero-actions hero-actions-outlined">
+            <a href="{% url 'resource_list' %}" class="btn hero-outline-btn">
+                Переглянути ресурси
+            </a>
+
+            {% if user.is_authenticated %}
+                {% if user.is_superuser or user.is_staff or user.profile.role == 'teacher' %}
+                    <a href="{% url 'my_bookings' %}" class="btn hero-outline-btn">
+                        Мої бронювання
+                    </a>
+                {% endif %}
+            {% else %}
+                <a href="{% url 'login' %}" class="btn hero-outline-btn">
+                    Увійти в систему
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="stats-section mt-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="info-card h-100">
+                <div class="info-card-icon">🏫</div>
+                <h3 class="info-card-title">Ресурси</h3>
+                <p class="info-card-text">
+                    Перегляд аудиторій, лабораторій, конференц-залів та обладнання в одному інтерфейсі.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-card h-100">
+                <div class="info-card-icon">📅</div>
+                <h3 class="info-card-title">Календар зайнятості</h3>
+                <p class="info-card-text">
+                    Денний і тижневий перегляд доступності з можливістю швидкого бронювання пар.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="info-card h-100">
+                <div class="info-card-icon">🔐</div>
+                <h3 class="info-card-title">Контроль доступу</h3>
+                <p class="info-card-text">
+                    Ролі студентів, викладачів та адміністраторів з окремими правами доступу.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

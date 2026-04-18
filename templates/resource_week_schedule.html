@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+
+{% block title %}Тижнева зайнятість {{ resource.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <div class="page-eyebrow">Календар ресурсу</div>
+        <h1 class="section-title mb-2">Тижнева зайнятість ресурсу</h1>
+        <p class="mb-1"><strong>Ресурс:</strong> {{ resource.name }}</p>
+        <p class="text-muted mb-0">
+            <strong>Період:</strong>
+            {{ week_dates.0|date:"d.m.Y" }} — {{ week_dates.6|date:"d.m.Y" }}
+        </p>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <a href="{% url 'resource_week_schedule' resource.id %}?date={{ prev_week|date:'Y-m-d' }}"
+       class="btn app-btn app-btn-secondary">
+        ← Попередній тиждень
+    </a>
+
+    <a href="{% url 'resource_week_schedule' resource.id %}?date={{ next_week|date:'Y-m-d' }}"
+       class="btn app-btn app-btn-secondary">
+        Наступний тиждень →
+    </a>
+
+    <a href="{% url 'resource_schedule' resource.id %}"
+       class="btn app-btn app-btn-outline-dark">
+        Денний вигляд
+    </a>
+
+    <a href="{% url 'resource_detail' resource.id %}"
+       class="btn app-btn app-btn-outline-dark">
+        Назад до ресурсу
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table weekly-schedule-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="min-width: 110px;">№ пари</th>
+                        <th style="min-width: 140px;">Час</th>
+                        {% for day in week_dates %}
+                            <th style="min-width: 180px;">
+                                {{ day|date:"D" }}<br>
+                                <small>{{ day|date:"d.m.Y" }}</small>
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in schedule_rows %}
+                        <tr>
+                            <td><strong>{{ row.pair_number }} пара</strong></td>
+                            <td>{{ row.time_range }}</td>
+
+                            {% for day in row.days %}
+                                <td class="{% if day.is_past %}past-slot-cell{% endif %}">
+                                    {% if day.booking %}
+                                        <div class="mb-2">
+                                            {% if day.booking.status == 'approved' %}
+                                                <span class="badge {% if day.is_past %}bg-secondary{% else %}bg-danger{% endif %}">
+                                                    {% if day.is_past %}Було зайнято{% else %}Зайнято{% endif %}
+                                                </span>
+                                            {% elif day.booking.status == 'pending' %}
+                                                <span class="badge {% if day.is_past %}bg-secondary{% else %}bg-warning text-dark{% endif %}">
+                                                    {% if day.is_past %}Було очікування{% else %}Очікує підтвердження{% endif %}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+
+                                        <div class="small mb-2">
+                                            <div><strong>Користувач:</strong> {{ day.booking.user.username }}</div>
+                                            <div>
+                                                <strong>Час:</strong>
+                                                {{ day.booking.start_time|date:"H:i" }} – {{ day.booking.end_time|date:"H:i" }}
+                                            </div>
+                                        </div>
+
+                                        {% if day.alternatives %}
+                                            <div class="small text-muted mb-1">Вільні альтернативи:</div>
+                                            <div class="d-flex flex-column gap-1">
+                                                {% for alt in day.alternatives %}
+                                                    {% if day.is_past %}
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                                            {{ alt.name }}
+                                                        </button>
+                                                    {% else %}
+                                                        {% if user.is_authenticated %}
+                                                            {% if user.is_superuser or user.is_staff or user.profile.role == 'teacher' %}
+                                                                <form method="post"
+                                                                      action="{% url 'quick_book_pair' alt.id row.pair_number %}"
+                                                                      class="quick-book-form-alt m-0">
+                                                                    {% csrf_token %}
+                                                                    <input type="hidden" name="date" value="{{ day.date|date:'Y-m-d' }}">
+                                                                    <button type="submit"
+                                                                            class="btn btn-sm btn-outline-primary w-100 quick-book-btn"
+                                                                            data-resource="{{ alt.name }}"
+                                                                            data-date="{{ day.date|date:'d.m.Y' }}"
+                                                                            data-pair="{{ row.pair_number }}"
+                                                                            data-time="{{ row.time_range }}">
+                                                                        {{ alt.name }}
+                                                                    </button>
+                                                                </form>
+                                                            {% else %}
+                                                                <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                                                    {{ alt.name }}
+                                                                </button>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            <a href="{% url 'login' %}" class="btn btn-sm btn-outline-dark">
+                                                                Увійти
+                                                            </a>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="small text-muted">Немає вільних альтернатив</div>
+                                        {% endif %}
+
+                                    {% else %}
+                                        {% if day.is_past %}
+                                            <div class="mb-2">
+                                                <span class="badge bg-secondary">Вільно</span>
+                                            </div>
+
+                                            <button type="button" class="btn btn-sm btn-outline-secondary w-100" disabled>
+                                                Забронювати
+                                            </button>
+                                        {% else %}
+                                            <div class="mb-2">
+                                                <span class="badge bg-success">Вільно</span>
+                                            </div>
+
+                                            {% if user.is_authenticated %}
+                                                {% if user.is_superuser or user.is_staff or user.profile.role == 'teacher' %}
+                                                    <form method="post"
+                                                          action="{% url 'quick_book_pair' resource.id row.pair_number %}"
+                                                          class="quick-book-form mt-2">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="date" value="{{ day.date|date:'Y-m-d' }}">
+                                                        <button type="submit"
+                                                                class="btn btn-sm app-btn app-btn-outline-dark w-100 quick-book-btn"
+                                                                data-resource="{{ resource.name }}"
+                                                                data-date="{{ day.date|date:'d.m.Y' }}"
+                                                                data-pair="{{ row.pair_number }}"
+                                                                data-time="{{ row.time_range }}">
+                                                            Забронювати
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100" disabled>
+                                                        Тільки перегляд
+                                                    </button>
+                                                {% endif %}
+                                            {% else %}
+                                                <a href="{% url 'login' %}" class="btn btn-sm btn-outline-dark w-100">
+                                                    Увійти
+                                                </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                Дані для тижневого календаря відсутні.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="quickBookWeekModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Підтвердження бронювання</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Ресурс:</strong> <span id="weekModalResource"></span></p>
+                <p><strong>Дата:</strong> <span id="weekModalDate"></span></p>
+                <p><strong>Пара:</strong> <span id="weekModalPair"></span></p>
+                <p><strong>Час:</strong> <span id="weekModalTime"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn app-btn app-btn-secondary" data-bs-dismiss="modal">
+                    Скасувати
+                </button>
+                <button type="button" class="btn app-btn app-btn-primary" id="confirmWeekQuickBook">
+                    Підтвердити
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('quickBookWeekModal');
+    if (!modalElement) return;
+
+    const modal = new bootstrap.Modal(modalElement);
+    const resourceEl = document.getElementById('weekModalResource');
+    const dateEl = document.getElementById('weekModalDate');
+    const pairEl = document.getElementById('weekModalPair');
+    const timeEl = document.getElementById('weekModalTime');
+    const confirmBtn = document.getElementById('confirmWeekQuickBook');
+
+    let currentForm = null;
+
+    function attachQuickBookForms() {
+        document.querySelectorAll('.quick-book-form, .quick-book-form-alt').forEach(form => {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                currentForm = form;
+                const button = form.querySelector('.quick-book-btn');
+
+                resourceEl.textContent = button.dataset.resource;
+                dateEl.textContent = button.dataset.date;
+                pairEl.textContent = button.dataset.pair + ' пара';
+                timeEl.textContent = button.dataset.time;
+
+                modal.show();
+            });
+        });
+    }
+
+    confirmBtn.addEventListener('click', function () {
+        if (!currentForm) return;
+
+        const formData = new FormData(currentForm);
+
+        fetch(currentForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            modal.hide();
+
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Сталася помилка під час бронювання.');
+            }
+        })
+        .catch(() => {
+            modal.hide();
+            alert('Сталася помилка під час бронювання.');
+        });
+    });
+
+    attachQuickBookForms();
+});
+</script>
+{% endblock %}

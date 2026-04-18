@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Бронювання{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="fw-bold mb-4">Бронювання ресурсу</h1>
+
+                <div class="mb-4">
+                    <p class="mb-1"><strong>Ресурс:</strong> {{ resource.name }}</p>
+                    <p class="mb-1"><strong>Тип:</strong> {{ resource.get_resource_type_display }}</p>
+                    <p class="mb-0"><strong>Місцезнаходження:</strong> {{ resource.location }}</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" id="booking-form">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.start_time.label }}</label>
+                        {{ form.start_time }}
+                        {% if form.start_time.errors %}
+                            <div class="text-danger small mt-1">{{ form.start_time.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.end_time.label }}</label>
+                        {{ form.end_time }}
+                        {% if form.end_time.errors %}
+                            <div class="text-danger small mt-1">{{ form.end_time.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-dark" id="open-confirm-modal">
+                            Підтвердити бронювання
+                        </button>
+                        <a href="{% url 'resource_detail' resource.id %}" class="btn btn-outline-secondary">Скасувати</a>
+                    </div>
+                </form>
+
+                {% if alternative_resources %}
+                    <hr class="my-4">
+
+                    <h4 class="fw-bold mb-3">Доступні альтернативи</h4>
+                    <p class="text-muted">
+                        Обраний ресурс зайнятий у вказаний час. Нижче наведено інші доступні ресурси того ж типу.
+                    </p>
+
+                    <div class="row g-3">
+                        {% for alt in alternative_resources %}
+                            <div class="col-md-6">
+                                <div class="card border-success h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ alt.name }}</h5>
+                                        <p class="mb-2"><strong>Місцезнаходження:</strong> {{ alt.location }}</p>
+                                        <p class="mb-3"><strong>Місткість:</strong> {{ alt.capacity }}</p>
+                                        <a href="{% url 'create_booking' alt.id %}" class="btn btn-outline-success btn-sm">
+                                            Забронювати цей ресурс
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bookingConfirmModal" tabindex="-1" aria-labelledby="bookingConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="bookingConfirmModalLabel">Підтвердження бронювання</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Ресурс:</strong> {{ resource.name }}</p>
+                <p><strong>Дата:</strong> <span id="modal-booking-date">—</span></p>
+                <p><strong>Початок:</strong> <span id="modal-booking-start">—</span></p>
+                <p><strong>Кінець:</strong> <span id="modal-booking-end">—</span></p>
+                <p><strong>Тривалість:</strong> <span id="modal-booking-duration">—</span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Скасувати</button>
+                <button type="button" class="btn btn-dark" id="confirm-submit-booking">Підтвердити</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const openModalBtn = document.getElementById('open-confirm-modal');
+    const submitBtn = document.getElementById('confirm-submit-booking');
+    const form = document.getElementById('booking-form');
+
+    const startInput = document.getElementById('id_start_time');
+    const endInput = document.getElementById('id_end_time');
+
+    const modalDate = document.getElementById('modal-booking-date');
+    const modalStart = document.getElementById('modal-booking-start');
+    const modalEnd = document.getElementById('modal-booking-end');
+    const modalDuration = document.getElementById('modal-booking-duration');
+
+    const bookingModal = new bootstrap.Modal(document.getElementById('bookingConfirmModal'));
+
+    function formatDateTime(datetimeValue) {
+        if (!datetimeValue) return null;
+
+        const dt = new Date(datetimeValue);
+        if (isNaN(dt.getTime())) return null;
+
+        const date = dt.toLocaleDateString('uk-UA');
+        const time = dt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+
+        return { date, time, raw: dt };
+    }
+
+    openModalBtn.addEventListener('click', function () {
+        const startData = formatDateTime(startInput.value);
+        const endData = formatDateTime(endInput.value);
+
+        if (!startData || !endData) {
+            alert('Будь ласка, вкажіть коректні дату та час початку і завершення.');
+            return;
+        }
+
+        const durationMs = endData.raw - startData.raw;
+        if (durationMs <= 0) {
+            alert('Час завершення має бути пізніше за час початку.');
+            return;
+        }
+
+        const durationMinutes = Math.floor(durationMs / 60000);
+        const hours = Math.floor(durationMinutes / 60);
+        const minutes = durationMinutes % 60;
+
+        let durationText = '';
+        if (hours > 0) {
+            durationText += `${hours} год `;
+        }
+        if (minutes > 0) {
+            durationText += `${minutes} хв`;
+        }
+        if (!durationText) {
+            durationText = 'менше 1 хв';
+        }
+
+        modalDate.textContent = startData.date;
+        modalStart.textContent = startData.time;
+        modalEnd.textContent = endData.time;
+        modalDuration.textContent = durationText.trim();
+
+        bookingModal.show();
+    });
+
+    submitBtn.addEventListener('click', function () {
+        form.submit();
+    });
+});
+</script>
+{% endblock %}
